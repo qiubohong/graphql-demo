@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>graphql-demo</title>
+    <style>
+    ul,
+    li {
+        list-style: none
+    }
+    </style>
+</head>
+
+<body>
+    <div id="geo">
+        <h3>请求参数：</h3>
+        <ul id="params">
+        </ul>
+        <p>
+            <button id="send">发送请求</button>
+        </p>
+        <h3>graphql返回数据：</h3>
+        <div id="return"></div>
+    </div>
+    <script src="//apps.bdimg.com/libs/zepto/1.1.4/zepto.min.js"></script>
+    <script>
+    $(function() {
+        (function() {
+            var t = ""
+            graphql("/graphql", '{__schema { queryType { name, fields { name, description} }}}', function(res) {
+                var fields = res.data.__schema.queryType.fields;
+                let temp = "";
+                $.each(fields,function(idx,item){
+                    temp += `<li>
+                        <label>
+                    <input value="${item.name}" type="checkbox" id="count">${item.name}</label>
+                    </li>`;
+                });
+                $("#params").html(temp)
+            });
+        })();
+        $("#send").click(function() {
+            var query = "{";
+            $("input[type='checkbox']").each(function() {
+                if(this.checked){
+                    query += " " + this.value + " ";
+                }
+            });
+            query += "}"
+            if(query == "{}"){
+                alert("没选择参数")
+                return;
+            }
+            graphql("/graphql", query, function(data) {
+                var temp = JSON.stringify(data).replace(/\\n/g, '<br><li>').replace(/\\"/g, '')
+                console.log(data)
+                var tempHtml = jsonToHtml(data);
+                $("#return").html(tempHtml)
+            });
+        })
+
+        function graphql(url, query, callback) {
+            $.ajax({
+                url: "/graphql",
+                headers: {
+                    "Content-Type": "application/graphql"
+                },
+                data: query,
+                type: "post",
+                dataType: "json",
+                success: function(data) {
+                    callback && callback(data);
+                }
+            })
+        }
+
+        function jsonToHtml(obj) {
+            var tempHtml = "";
+            if (Object.prototype.toString.call(obj) == '[object Object]') {
+                tempHtml = "<div>{";
+                $.each(obj, function(key, value) {
+                    tempHtml += "<div style='margin-left:2em'><b>" + key + "</b>:";
+                    if (typeof value != "object") {
+                        if (typeof value == "string") {
+                            value = "\"" + value + "\"";
+                        }
+                        tempHtml += value + "</div>";
+                    } else {
+                        tempHtml += jsonToHtml(value) + "</div>"
+                    }
+                })
+            } else if (Object.prototype.toString.call(obj) == '[object Array]') {
+                tempHtml = "<div>[";
+                $.each(obj, function(key, value) {
+                    if (typeof value != "object") {
+                        if (typeof value == "string") {
+                            value = "\"" + value + "\"";
+                        }
+                        tempHtml += "<div style='margin-left:2em'>" + value + "</div>";
+                    } else {
+                        tempHtml += "<div style='margin-left:2em'>" + jsonToHtml(value) + "</div>"
+                    }
+                })
+            }
+
+
+            if (Object.prototype.toString.call(obj) == '[object Object]') {
+                tempHtml += "}</div>";
+            } else if (Object.prototype.toString.call(obj) == '[object Array]') {
+                tempHtml += "]</div>";
+            }
+
+            return tempHtml;
+        }
+    })
+    </script>
+</body>
+
+</html>
